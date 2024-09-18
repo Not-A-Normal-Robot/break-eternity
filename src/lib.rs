@@ -10,7 +10,7 @@ pub mod bignum {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub enum Sign { Positive, Negative }
 
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Copy, Debug)]
     pub struct BigNum {
         pub sign: Sign,
         pub magnitude: f64,

@@ -1,7 +1,11 @@
+const F64_MAX_10_EXP: f64 = 308.254715559916743;
+
 pub mod comparisons {
-    use std::ops::Rem;
+    use std::{cmp::Ordering, ops::Rem};
 
     use crate::bignum::{BigNum, Sign};
+
+    use super::F64_MAX_10_EXP;
 
     impl BigNum {
         pub fn is_nan(&self) -> bool {
@@ -34,7 +38,14 @@ pub mod comparisons {
         }
 
         pub fn is_normalized(&self) -> bool {
-            self.layer.rem(1.0) == 0.0
+            // normally, layer is a whole number
+            self.layer.rem(1.0) == 0.0 &&
+            (
+                // if layer is higher than it needs to be then it's not normalized
+                // too high of a layer can lead to less precision
+                self.layer == 0.0 ||
+                self.magnitude >= F64_MAX_10_EXP
+            )
         }
     }
 
@@ -48,12 +59,12 @@ pub mod comparisons {
                 return true;
             }
 
-            let normalizedSelf = self.normalize();
-            let normalizedOther = other.normalize();
+            let normalized_self = self.normalize();
+            let normalized_other = other.normalize();
 
-            normalizedSelf.sign == normalizedOther.sign &&
-            normalizedSelf.magnitude == normalizedOther.magnitude &&
-            normalizedSelf.layer == normalizedOther.layer
+            normalized_self.sign == normalized_other.sign &&
+            normalized_self.magnitude == normalized_other.magnitude &&
+            normalized_self.layer == normalized_other.layer
         }
     }
 
@@ -77,7 +88,57 @@ pub mod comparisons {
 
             let sign = self.sign;
 
-            todo!()
+            let normalized_self = self.normalize();
+            let normalized_other = other.normalize();
+
+            let layer_ordering = normalized_self.layer.partial_cmp(&normalized_other.layer);
+
+            match layer_ordering {
+                Some(Ordering::Greater) => {
+                    if(sign == Sign::Positive) {
+                        return Some(Ordering::Greater);
+                    } else {
+                        return Some(Ordering::Less);
+                    }
+                },
+                Some(Ordering::Less) => {
+                    if(sign == Sign::Positive) {
+                        return Some(Ordering::Less);
+                    } else {
+                        return Some(Ordering::Greater);
+                    }
+                },
+                None => {
+                    return None
+                },
+
+                Some(Ordering::Equal) => () // continue
+            };
+
+            let mag_ordering = normalized_self.magnitude.partial_cmp(&normalized_other.magnitude);
+
+            return match mag_ordering {
+                Some(Ordering::Greater) => {
+                    if(sign == Sign::Positive) {
+                        Some(Ordering::Greater)
+                    } else {
+                        Some(Ordering::Less)
+                    }
+                },
+                Some(Ordering::Less) => {
+                    if(sign == Sign::Positive) {
+                        Some(Ordering::Less)
+                    } else {
+                        Some(Ordering::Greater)
+                    }
+                },
+                Some(Ordering::Equal) => {
+                    Some(Ordering::Equal)
+                },
+                None => {
+                    None
+                }
+            };
         }
     }
 }
